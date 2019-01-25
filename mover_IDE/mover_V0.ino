@@ -29,6 +29,8 @@ ros::Publisher e("end", &current_time);
 
 // define beginning of the game
 bool hasbegun;
+bool state_has_changed;
+bool has_touched_before;
 
 CRGB leds[NUM_LEDS];
 CRGB myled[1];
@@ -64,6 +66,8 @@ void setup() {
 
   // set beginning to false
   hasbegun = false;
+  state_has_changed = true;
+  has_touched_before = true;
 
 }
 
@@ -81,11 +85,14 @@ void loop() {
   if(!hasbegun){
     if(sensorVal == LOW)
     {
-      myled[0] = CRGB(255, 255, 255);
-      for (int i = 0; i<NUM_LEDS; i++){
-        leds[i] = CRGB(0, 0, 0);
+      if(state_has_changed) {
+        myled[0] = CRGB(255, 255, 255);
+        for (int i = 0; i<NUM_LEDS; i++){
+          leds[i] = CRGB(0, 0, 0);
+        }
+        FastLED.show();
+        state_has_changed = false;
       }
-      FastLED.show();
       nh.spinOnce();
     }
     else {
@@ -93,7 +100,7 @@ void loop() {
       digitalWrite(BUZZER_PIN, HIGH);
       delay(70);
       digitalWrite(BUZZER_PIN, LOW);
-      delay(70);
+      delay(100);
       digitalWrite(BUZZER_PIN, HIGH);
       delay(70);
       digitalWrite(BUZZER_PIN, LOW);
@@ -109,6 +116,7 @@ void loop() {
     if (buttonState == HIGH) {
       
       hasbegun = false;
+      state_has_changed = true;
       current_time.data = nh.now();
       e.publish( &current_time );
       nh.spinOnce();
@@ -119,28 +127,30 @@ void loop() {
 
       // if loop is closed
       if (sensorVal == HIGH) {
+          digitalWrite(BUZZER_PIN, HIGH);
+          //delay(100);
           myled[0] = CRGB(255, 0, 0);
           leds[0] = CRGB(0, 0, 0);
           FastLED.show();
-          digitalWrite(BUZZER_PIN, HIGH);
-          delay(100);
-          digitalWrite(BUZZER_PIN, LOW);
           current_time.data = nh.now();
           p.publish( &current_time );
           nh.spinOnce();
+          has_touched_before = true;
+          digitalWrite(BUZZER_PIN, LOW);
       }
       
       // if loop is open
       else {
-          nh.spinOnce();
-          leds[0] = CRGB(0, 0, 0);
-          myled[0] = CRGB(0, 255, 0);
-          FastLED.show();
-          delay(10);
+          if(has_touched_before) {
+            myled[0] = CRGB(0, 255, 0);
+            FastLED.show();
+            nh.spinOnce();
+            has_touched_before = false;
+          }
+          else {
+            nh.spinOnce();
+          }
       }
-
     }
-    
-    
   }
 }
